@@ -1,0 +1,571 @@
+---
+title: "Playing with Typescript compiler API"
+description: "Let's see how many cool things we can do using the compiler API from Typescript"
+date: "2022-08-27"
+tags: ['typescript', 'compiler']
+---
+
+## Basic idea
+
+Normally we use TypeScript just as a build tool to transpile your TypeScript code into JavaScript 
+and it's okay this is usually all you need, but many people don't know that if you import the typescript 
+module you have access to the compiler API. This compiler API provides some very powerful and cool 
+tools for interacting or even creating TypeScript code.
+
+## Some examples
+
+#### Generating TypeScript AST from an SourceFile
+
+```ts
+import * as ts from "typescript";
+import fs from "fs";
+
+// Here I'm mocking the filename and the code, but you can read this from a real file with any problems
+const filename = "example.ts";
+const code = "const add = (x: number, y: number): number => x + y; add(1, 2);";
+
+// Here we can pass the ECMAScript version in this case I'm passing the latest one
+const sourceFile = ts.createSourceFile(filename, code, ts.ScriptTarget.Latest);
+
+const generateAst = (node: ts.Node, sourceFile: ts.SourceFile) => {
+  const syntaxKind = ts.SyntaxKind[node.kind];
+  const nodeText = node.getText(sourceFile);
+
+  fs.appendFile("output.txt", `${syntaxKind}: ${nodeText}`, function (err) {
+    console.log(err);
+  });
+
+  fs.appendFile("output.txt", "\n", function (err) {
+    console.log(err);
+  });
+
+  node.forEachChild((child) => generateAst(child, sourceFile));
+};
+
+(() => generateAst(sourceFile, sourceFile))();
+```
+
+###### Output:
+
+```
+SourceFile: const add = (x: number, y: number): number => x + y; add(1, 2);
+FirstStatement: const add = (x: number, y: number): number => x + y;
+VariableDeclarationList: const add = (x: number, y: number): number => x + y
+VariableDeclaration: add = (x: number, y: number): number => x + y
+Identifier: add
+ArrowFunction: (x: number, y: number): number => x + y
+Parameter: x: number
+Identifier: x
+NumberKeyword: number
+Parameter: y: number
+Identifier: y
+NumberKeyword: number
+NumberKeyword: number
+EqualsGreaterThanToken: =>
+BinaryExpression: x + y
+Identifier: x
+PlusToken: +
+Identifier: y
+ExpressionStatement: add(1, 2);
+CallExpression: add(1, 2)
+Identifier: add
+FirstLiteralToken: 1
+FirstLiteralToken: 2
+
+EndOfFileToken: 
+```
+
+#### Walking and Transforming the AST 
+
+```ts
+import * as ts from "typescript";
+
+// Creating a printer here, so we can print an TS node
+const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+
+const filename = "example.ts";
+const code = "const add = (x: number, y: number): number => x + y; add(1, 2);";
+
+const sourceFile = ts.createSourceFile(filename, code, ts.ScriptTarget.Latest);
+
+const renameAllAddIdentifiersToRenamedAdd =
+  (context: ts.TransformationContext) => (rootNode: ts.Node) => {
+    const visit = (node: ts.Node): ts.Node => {
+      const newNode = ts.visitEachChild(node, visit, context);
+
+      if (ts.isIdentifier(newNode) && newNode.text === "add") {
+        return context.factory.createIdentifier("renamedAdd");
+      }
+
+      return newNode;
+    };
+
+    return ts.visitNode(rootNode, visit);
+  };
+
+const transformationResult = ts.transform(sourceFile, [
+  renameAllAddIdentifiersToRenamedAdd,
+]);
+
+console.log(
+  printer.printNode(
+    ts.EmitHint.Unspecified,
+    transformationResult.transformed[0],
+    undefined
+  )
+);
+```
+
+###### Output:
+
+```ts
+const renamedAdd = (x: number, y: number): number => x + y;
+renamedAdd(1, 2);
+```
+
+#### Generating TypeScript code
+
+###### Generating type alias
+
+```ts
+// Creating a printer here, so we can print an TS node
+const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+
+const typeStringAlias = ts.factory.createTypeAliasDeclaration(
+  undefined,
+  ts.factory.createIdentifier("StringType"),
+  undefined,
+  ts.factory.createTypeReferenceNode("string")
+);
+
+console.log(
+  printer.printNode(ts.EmitHint.Unspecified, typeStringAlias, undefined)
+);
+```
+
+###### Output:
+
+```ts
+type StringType = string;
+```
+
+###### Generating union type alias
+
+```ts
+// Creating a printer here, so we can print an TS node
+const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+
+const unionTypeAlias = ts.factory.createTypeAliasDeclaration(
+  undefined,
+  ts.factory.createIdentifier("UnionType"),
+  undefined,
+  ts.factory.createUnionTypeNode([
+    ts.factory.createTypeReferenceNode("string"),
+    ts.factory.createTypeReferenceNode("number"),
+  ])
+);
+
+console.log(
+  printer.printNode(ts.EmitHint.Unspecified, unionTypeAlias, undefined)
+);
+```
+
+###### Output:
+
+```ts
+type UnionType = string | number;
+```
+
+###### Generating interfaces
+
+```ts
+// Creating a printer here, so we can print an TS node
+const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+
+const interfaceDeclaration = ts.factory.createInterfaceDeclaration(
+  undefined,
+  "InterfaceDeclaration",
+  [],
+  undefined,
+  [
+    ts.factory.createPropertySignature(
+      undefined,
+      "arrayType",
+      undefined,
+      ts.factory.createArrayTypeNode(
+        ts.factory.createTypeReferenceNode("number")
+      )
+    ),
+    ts.factory.createPropertySignature(
+      undefined,
+      "stringType",
+      undefined,
+      ts.factory.createTypeReferenceNode("string")
+    ),
+  ]
+);
+
+console.log(
+  printer.printNode(ts.EmitHint.Unspecified, interfaceDeclaration, undefined)
+);
+```
+
+###### Output:
+
+```ts
+interface InterfaceDeclaration {
+    arrayType: number[];
+    stringType: string;
+}
+```
+
+###### Generating objects
+
+```ts
+// Creating a printer here, so we can print an TS node
+const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+
+const obj = ts.factory.createObjectLiteralExpression([
+  ts.factory.createPropertyAssignment(
+    "firstKey",
+    ts.factory.createStringLiteral("string expression")
+  ),
+  ts.factory.createPropertyAssignment(
+    "secondKey",
+    ts.factory.createNumericLiteral(0)
+  ),
+]);
+
+console.log(printer.printNode(ts.EmitHint.Unspecified, obj, undefined));
+```
+
+###### Output:
+
+```ts
+{ firstKey: "string expression", secondKey: 0 }
+```
+
+As you can see we can do a bunch of cool stuff with the API, it includes generating typescript code or 
+creating, manipulating and read the AST.
+
+With that, we can do some useful things, like for example, I did this function to read a JSON file and 
+generate his typing:
+
+```ts
+import * as fs from "fs";
+
+import ts from "typescript";
+
+const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+
+const parse = <T extends Record<string, T>>(
+  name: string,
+  json: Record<string, T> | Array<T>
+): ts.InterfaceDeclaration | ts.TypeAliasDeclaration => {
+  if (Array.isArray(json)) {
+    const key = name.charAt(0).toUpperCase() + name.slice(1);
+
+    if (typeof json[0] === "object") {
+      printer.printNode(
+        ts.EmitHint.Unspecified,
+        parse(key, json[0]),
+        undefined
+      );
+
+      fs.appendFile("./output.ts", "\n\n", function (err) {
+        if (err) console.log("error", err);
+      });
+
+      const valueType = ts.factory.createArrayTypeNode(
+        ts.factory.createTypeReferenceNode(
+          ts.factory.createIdentifier(key),
+          undefined
+        )
+      );
+
+      const typeDeclaration = ts.factory.createTypeAliasDeclaration(
+        undefined,
+        key + "Array",
+        undefined,
+        valueType
+      );
+
+      fs.appendFile(
+        "./output.ts",
+        printer.printNode(ts.EmitHint.Unspecified, typeDeclaration, undefined),
+        function (err) {
+          if (err) console.log("error", err);
+        }
+      );
+
+      return typeDeclaration;
+    }
+
+    const valueType = ts.factory.createArrayTypeNode(
+      ts.factory.createTypeReferenceNode(typeof json[0])
+    );
+
+    const typeDeclaration = ts.factory.createTypeAliasDeclaration(
+      undefined,
+      key + "Array",
+      undefined,
+      valueType
+    );
+
+    fs.appendFile(
+      "./output.ts",
+      printer.printNode(ts.EmitHint.Unspecified, typeDeclaration, undefined),
+      function (err) {
+        if (err) console.log("error", err);
+      }
+    );
+
+    return typeDeclaration;
+  }
+
+  const keys = Object.keys(json);
+  const values = Object.values(json);
+
+  const valuesTypes = values.map((value, idx) => {
+    if (Array.isArray(value)) {
+      if (typeof value[0] === "object") {
+        const objectKey =
+          keys[idx].charAt(0).toUpperCase() + keys[idx].slice(1);
+
+        printer.printNode(
+          ts.EmitHint.Unspecified,
+          parse(objectKey, value[0]),
+          undefined
+        );
+
+        fs.appendFile("./output.ts", "\n\n", function (err) {
+          if (err) console.log("error", err);
+        });
+
+        return ts.factory.createPropertySignature(
+          undefined,
+          keys[idx],
+          undefined,
+          ts.factory.createArrayTypeNode(
+            ts.factory.createTypeReferenceNode(
+              ts.factory.createIdentifier(objectKey),
+              undefined
+            )
+          )
+        );
+      }
+
+      return ts.factory.createPropertySignature(
+        undefined,
+        keys[idx],
+        undefined,
+        ts.factory.createArrayTypeNode(
+          ts.factory.createTypeReferenceNode(typeof value[0])
+        )
+      );
+    }
+
+    if (typeof value === "object") {
+      const objectKey = keys[idx].charAt(0).toUpperCase() + keys[idx].slice(1);
+
+      printer.printNode(
+        ts.EmitHint.Unspecified,
+        parse(objectKey, value),
+        undefined
+      );
+
+      fs.appendFile("./output.ts", "\n\n", function (err) {
+        if (err) console.log("error", err);
+      });
+
+      return ts.factory.createPropertySignature(
+        undefined,
+        keys[idx],
+        undefined,
+        ts.factory.createTypeReferenceNode(
+          ts.factory.createIdentifier(objectKey),
+          undefined
+        )
+      );
+    }
+
+    return ts.factory.createPropertySignature(
+      undefined,
+      keys[idx],
+      undefined,
+      ts.factory.createTypeReferenceNode(typeof value)
+    );
+  });
+
+  const key = name.charAt(0).toUpperCase() + name.slice(1);
+
+  const interfaceDeclaration = ts.factory.createInterfaceDeclaration(
+    undefined,
+    key,
+    [],
+    undefined,
+    valuesTypes
+  );
+
+  fs.appendFile(
+    "./output.ts",
+    printer.printNode(ts.EmitHint.Unspecified, interfaceDeclaration, undefined),
+    function (err) {
+      if (err) console.log("error", err);
+    }
+  );
+
+  return interfaceDeclaration;
+};
+
+(() => {
+  fs.writeFile("./output.ts", "", function (err) {
+    if (err) console.log("error", err);
+  });
+
+  const output = fs.readFileSync("./input.json", "utf8");
+
+  const json = JSON.parse(output);
+
+  parse("json", json);
+})();
+```
+
+###### First input example:
+
+```json
+{
+  "id": "0001",
+  "type": "donut",
+  "name": "Cake",
+  "ppu": 0.55,
+  "batters": {
+    "batter": [
+      { "id": "1001", "type": "Regular" },
+      { "id": "1002", "type": "Chocolate" },
+      { "id": "1003", "type": "Blueberry" },
+      { "id": "1004", "type": "Devil's Food" }
+    ]
+  },
+  "topping": [
+    { "id": "5001", "type": "None" },
+    { "id": "5002", "type": "Glazed" },
+    { "id": "5005", "type": "Sugar" },
+    { "id": "5007", "type": "Powdered Sugar" },
+    { "id": "5006", "type": "Chocolate with Sprinkles" },
+    { "id": "5003", "type": "Chocolate" },
+    { "id": "5004", "type": "Maple" }
+  ]
+}
+```
+
+###### Output:
+
+```ts
+interface Batter {
+    id: string;
+    type: string;
+}
+
+interface Batters {
+    batter: Batter[];
+}
+
+interface Topping {
+    id: string;
+    type: string;
+}
+
+interface Json {
+    id: string;
+    type: string;
+    name: string;
+    ppu: number;
+    batters: Batters;
+    topping: Topping[];
+}
+```
+
+###### Second input example:
+
+```json
+[
+  {
+    "id": "0001",
+    "type": "donut",
+    "name": "Cake",
+    "ppu": 0.55,
+    "batters": {
+      "batter": [
+        { "id": "1001", "type": "Regular" },
+        { "id": "1002", "type": "Chocolate" },
+        { "id": "1003", "type": "Blueberry" },
+        { "id": "1004", "type": "Devil's Food" }
+      ]
+    },
+    "topping": [
+      { "id": "5001", "type": "None" },
+      { "id": "5002", "type": "Glazed" },
+      { "id": "5005", "type": "Sugar" },
+      { "id": "5007", "type": "Powdered Sugar" },
+      { "id": "5006", "type": "Chocolate with Sprinkles" },
+      { "id": "5003", "type": "Chocolate" },
+      { "id": "5004", "type": "Maple" }
+    ]
+  },
+  {
+    "id": "0002",
+    "type": "donut",
+    "name": "Cake",
+    "ppu": 0.55,
+    "batters": {
+      "batter": [
+        { "id": "1001", "type": "Regular" },
+        { "id": "1002", "type": "Chocolate" },
+        { "id": "1003", "type": "Blueberry" },
+        { "id": "1004", "type": "Devil's Food" }
+      ]
+    },
+    "topping": [
+      { "id": "5001", "type": "None" },
+      { "id": "5002", "type": "Glazed" },
+      { "id": "5005", "type": "Sugar" },
+      { "id": "5007", "type": "Powdered Sugar" },
+      { "id": "5006", "type": "Chocolate with Sprinkles" },
+      { "id": "5003", "type": "Chocolate" },
+      { "id": "5004", "type": "Maple" }
+    ]
+  }
+]
+```
+
+###### Output:
+
+```ts
+interface Batter {
+    id: string;
+    type: string;
+}
+
+interface Batters {
+    batter: Batter[];
+}
+
+interface Topping {
+    id: string;
+    type: string;
+}
+
+interface Json {
+    id: string;
+    type: string;
+    name: string;
+    ppu: number;
+    batters: Batters;
+    topping: Topping[];
+}
+
+type JsonArray = Json[];
+```
+
+And that's it! I hope that you enjoyed reading this post. Thanks for your attention!
