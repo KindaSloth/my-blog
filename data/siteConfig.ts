@@ -2,7 +2,7 @@ import type { SiteConfig } from "@/lib/types";
 
 const siteConfig: SiteConfig = {
   avatar: "/avatar.jpeg",
-  siteUrl: "", // TODO: add site URL here
+  siteUrl: "https://kinda-silly-blog.vercel.app/",
   siteName: "KindaSloth Blog",
   siteDescription: "My blog to write about cool tech stuffs",
   nav: [
