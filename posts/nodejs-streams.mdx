@@ -1,0 +1,213 @@
+---
+title: "Playing with Node.js Streams"
+description: "Explaining and showing a few usages of Node.js Streams."
+date: "2022-08-29"
+tags: ['node']
+---
+
+## Basic idea
+
+If you work or usually use Node, you probably already have heard about the Node.js Streams. In this 
+blog, I'll try to explain how they work and what kind of things we can do using this feature.
+
+## Types of Streams
+
+- #### Readable Stream (This stream is used to read data on demand)
+
+- #### Writable Stream (This stream is used to write data on demand)
+
+- #### Duplex Stream (Stream that are both Readable and Writable)
+
+- #### Transform Stream (Duplex stream that can modify or transform data)
+
+## How to work with Streams?
+
+Is important to know that if you want to work with Streams you'll need to work with a pipeline. To do this, you can use the pipe method of a readable stream, for example:
+
+```js
+readableStream
+  .pipe(transformStream1)
+  .pipe(transformStream2)
+  .pipe(writableStream)
+```
+
+Also, we have some utils to deal with that, for example, the `pipeline` function that you can import 
+from the `stream` module:
+
+```js
+const { pipeline } = require('stream');
+const { promisify } = require('util');
+
+const pipelineAsync = promisify(pipeline);
+
+await pipelineAsync(readableStream, transformStream1, transformStream2, writableStream)
+```
+
+## Examples of Usages
+
+#### Dealing with Gigabytes of archives
+
+For this example, I've created a .txt file with 50GB of size, so if you try to handle this large archive not 
+using streams, you'll probably end up with something like this:
+
+```js
+import fs from "fs";
+
+(() => {
+  const file = fs.readFileSync("assets/bigfile.txt");
+
+  fs.writeFile(
+    "assets/output.txt",
+    file.toString().toUpperCase(),
+    function (err) {
+      console.log(err);
+    }
+  );
+})();
+```
+
+The problem here is that the file is too large, so the node can't upload the entire file into memory 
+to work with. Because of that, if you try to run this code with a file larger than 2 GB in size, you will get 
+an error like this one:
+
+```js
+RangeError [ERR_FS_FILE_TOO_LARGE]: File size (50500000000) is greater than 2 GB
+```
+
+So the solution here is simple, we can use readable, transform, and writable streams to deal with this file on demand:
+
+```ts
+import fs from "fs";
+import { Transform } from "stream";
+
+const readStream = fs.createReadStream("assets/bigfile.txt");
+const writeStream = fs.createWriteStream("assets/output.txt");
+
+const transform = new Transform({
+  transform: (chunk, encoding, cb) => {
+    cb(null, chunk.toString().toUpperCase());
+  },
+});
+
+readStream.pipe(transform).pipe(writeStream);
+```
+
+And it's solved. In this case, the node transformed all letters of this giant txt file (50 GB of size) in 
+upper case in 193.94 seconds, doing this on demand!
+
+#### Streaming Video with a REST API
+
+You surely are used to streaming videos. Probably many of the platforms you use every day like 
+YouTube, Netflix, Prime Video, etc, use this medium to stream videos in real-time, now the question 
+remains how to do this using Node.Js?
+
+You can certainly build a simple endpoint that will take a video file and serve it simply to your front-
+end, something like this:
+
+```ts
+import express, { Request, Response } from "express";
+import cors from "cors";
+import fs from "fs";
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+const routes = express.Router();
+
+routes.get("/video", async (_req: Request, res: Response) => {
+  const path = "assets/demo.mp4";
+
+  try {
+    const stats = fs.statSync(path);
+    const { size } = stats;
+
+    const head = {
+      "Content-Length": size,
+      "Content-Type": "video/mp4",
+    };
+
+    res.writeHead(200, head);
+    fs.createReadStream(path).pipe(res);
+  } catch (err) {
+    console.log(err);
+
+    return res.send(404).json({
+      status: "ERR",
+      message: err,
+    });
+  }
+});
+
+app.use(routes);
+
+app.listen(3000, () => {
+  console.log(`Server running at 3000`);
+});
+```
+
+The problem with this code above is that your front-end will download all the file and after that load 
+the video to the user and you probably know that videos can have a considerable size, so it can take 
+a while to load and your user will be waiting all this time, the good news is that we can solve this 
+using the Node.Js Streams, in case you don't know, the express response is a stream, this allows us to 
+do something like:
+
+```ts
+import express, { Request, Response } from "express";
+import cors from "cors";
+import fs from "fs";
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+const routes = express.Router();
+
+routes.get("/video", (req: Request, res: Response) => {
+  const path = "assets/demo.mp4";
+
+  try {
+    const stats = fs.statSync(path);
+
+    const { size } = stats;
+
+    const { range } = req.headers;
+
+    const start = Number((range || "").replace(/bytes=/, "").split("-")[0]);
+    const end = size - 1;
+    const chunkSize = end - start + 1;
+
+    const stream = fs.createReadStream(path, { start, end });
+
+    const head = {
+      "Content-Range": `bytes ${start}-${end}/${size}`,
+      "Accept-Ranges": "bytes",
+      "Content-Length": chunkSize,
+      "Content-Type": "video/mp4",
+    };
+
+    res.writeHead(206, head);
+
+    stream.pipe(res);
+  } catch (err) {
+    console.log(err);
+
+    return res.send(404).json({
+      status: "ERR",
+      message: err,
+    });
+  }
+});
+
+app.use(routes);
+
+app.listen(3000, () => {
+  console.log(`Server running at 3000`);
+});
+```
+
+And It's solved! Here we're defining a readable stream that will start from some size and ends in 
+another one, so combining that with the 206 HTTP status code that means Partial Content, we can 
+stream our video in chunks to the front-end.

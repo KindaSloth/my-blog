@@ -44,6 +44,7 @@ export const getStaticPaths: GetStaticPaths = async () => {
 export const getStaticProps: GetStaticProps = async (context) => {
   const { tag } = context.params as ContextProps;
   const mdxFiles = getAllMdx().map((post) => post["frontMatter"]);
+
   return {
     props: {
       tag,
