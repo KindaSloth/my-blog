@@ -1,0 +1,97 @@
+---
+title: "Lambda encodings"
+description: "Showing how to encode values or structures in lambda calculus."
+date: "2022-09-05"
+tags: ['compiler']
+---
+
+## Basic idea
+
+For this post I'll presume that you already have at least a basic knowledge about the Lambda 
+Calculus. 
+
+So you probably know that the Lambda Calculus is composed of variables, lambdas, and 
+applications, but how we can create real programs just using pure lambda calculus? 
+
+In this post, I will explain some ways to do lambda encoding, i.e. how to encode values or 
+structures in lambda calculus.
+
+## Types of encodings
+
+#### Church encoding
+
+Church encoding is a way to represent data and operators in the lambda calculus.
+
+The method is named for Alonzo Church, who first encoded data in the lambda calculus this way. 
+
+#### Scott encoding
+
+Scott encoding is a way to represent recursive data types in the lambda calculus.
+
+The method is named for Dana Scott.
+
+## Encoding Booleans and If/Else using Church encoding
+
+```js
+// Church Boolean (True)
+// λt.λf.t
+const True = t => f => t;
+
+// Church Boolean (False)
+// λt.λf.f
+const False = t => f => f;
+
+// Church Conditional (If/Else)
+// λp.λa.λb.p a b
+const IfElse = p => a => b => p(a)(b);
+
+/*
+  if (condition) {
+    return 0;
+  } else {
+    return 1;
+  }
+*/
+IfElse(True)(0)(1); // 0
+IfElse(False)(0)(1); // 1
+```
+
+## Encoding ADTs and Pattern Matching using Scott encoding
+
+```js
+/*
+  Haskell version
+
+  data Nat = Zero | Succ Nat
+
+  predecessor n = case n of
+    Zero -> Zero
+    Succ n -> n
+*/
+
+// λzero.λsucc.zero
+const Zero = zero => succ => zero;
+
+// λnat.λzero.λsucc.succ nat
+const Succ = nat => zero => succ => succ(nat);
+
+// λnat.λzero.λsucc.nat zero succ
+const natCase = nat => zero => succ => nat(zero)(succ);
+
+// λnat. natCase nat Zero (λn.n)
+const predecessor = nat => natCase(nat)(Zero)(n => n);
+
+predecessor(Zero); // Zero
+predecessor(Succ(Zero)); // Zero
+predecessor(Succ(Succ(Zero))); // Succ(Zero)
+```
+
+## Typed versions
+
+These two simple examples show us how to encode data and datatypes using only pure lambda 
+calculus. 
+
+The most brilliant thing is that we can also use the same methods to encode data and datatypes 
+using some typed versions of Lambda Calculus like [System F](https://en.wikipedia.org/wiki/System_F).
+
+And that's it! I hope that you enjoyed reading this post. Thanks for your attention!

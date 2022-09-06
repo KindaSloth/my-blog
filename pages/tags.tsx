@@ -27,9 +27,11 @@ export const getStaticProps: GetStaticProps = async () => {
 
   const tags = mdxFiles.map((file) => file.tags).flat();
 
+  const uniqueTags = tags.filter((item, i) => tags.indexOf(item) === i);
+
   return {
     props: {
-      tags,
+      tags: uniqueTags,
     },
   };
 };
