@@ -17,7 +17,7 @@ tools for interacting or even creating TypeScript code.
 #### Generating TypeScript AST from an SourceFile
 
 ```ts
-import * as ts from "typescript";
+import ts from "typescript";
 import fs from "fs";
 
 // Here I'm mocking the filename and the code, but you can read this from a real file with any problems
@@ -78,7 +78,7 @@ EndOfFileToken:
 #### Walking and Transforming the AST 
 
 ```ts
-import * as ts from "typescript";
+import ts from "typescript";
 
 // Creating a printer here, so we can print an TS node
 const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
@@ -111,7 +111,7 @@ console.log(
   printer.printNode(
     ts.EmitHint.Unspecified,
     transformationResult.transformed[0],
-    undefined
+    ts.createSourceFile("", "", ts.ScriptTarget.Latest)
   )
 );
 ```
@@ -128,6 +128,8 @@ renamedAdd(1, 2);
 ###### Generating type alias
 
 ```ts
+import ts from "typescript";
+
 // Creating a printer here, so we can print an TS node
 const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
 
@@ -139,7 +141,11 @@ const typeStringAlias = ts.factory.createTypeAliasDeclaration(
 );
 
 console.log(
-  printer.printNode(ts.EmitHint.Unspecified, typeStringAlias, undefined)
+  printer.printNode(
+    ts.EmitHint.Unspecified,
+    typeStringAlias,
+    ts.createSourceFile("", "", ts.ScriptTarget.Latest)
+  )
 );
 ```
 
@@ -152,6 +158,8 @@ type StringType = string;
 ###### Generating union type alias
 
 ```ts
+import ts from "typescript";
+
 // Creating a printer here, so we can print an TS node
 const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
 
@@ -166,7 +174,11 @@ const unionTypeAlias = ts.factory.createTypeAliasDeclaration(
 );
 
 console.log(
-  printer.printNode(ts.EmitHint.Unspecified, unionTypeAlias, undefined)
+  printer.printNode(
+    ts.EmitHint.Unspecified,
+    unionTypeAlias,
+    ts.createSourceFile("", "", ts.ScriptTarget.Latest)
+  )
 );
 ```
 
@@ -179,6 +191,8 @@ type UnionType = string | number;
 ###### Generating interfaces
 
 ```ts
+import ts from "typescript";
+
 // Creating a printer here, so we can print an TS node
 const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
 
@@ -206,7 +220,11 @@ const interfaceDeclaration = ts.factory.createInterfaceDeclaration(
 );
 
 console.log(
-  printer.printNode(ts.EmitHint.Unspecified, interfaceDeclaration, undefined)
+  printer.printNode(
+    ts.EmitHint.Unspecified,
+    interfaceDeclaration,
+    ts.createSourceFile("", "", ts.ScriptTarget.Latest)
+  )
 );
 ```
 
@@ -222,6 +240,8 @@ interface InterfaceDeclaration {
 ###### Generating objects
 
 ```ts
+import ts from "typescript";
+
 // Creating a printer here, so we can print an TS node
 const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
 
@@ -236,7 +256,13 @@ const obj = ts.factory.createObjectLiteralExpression([
   ),
 ]);
 
-console.log(printer.printNode(ts.EmitHint.Unspecified, obj, undefined));
+console.log(
+  printer.printNode(
+    ts.EmitHint.Unspecified,
+    obj,
+    ts.createSourceFile("", "", ts.ScriptTarget.Latest)
+  )
+);
 ```
 
 ###### Output:
@@ -269,7 +295,7 @@ const parse = <T extends Record<string, T>>(
       printer.printNode(
         ts.EmitHint.Unspecified,
         parse(key, json[0]),
-        undefined
+        ts.createSourceFile("output.ts", "", ts.ScriptTarget.Latest)
       );
 
       fs.appendFile("./output.ts", "\n\n", function (err) {
@@ -292,7 +318,11 @@ const parse = <T extends Record<string, T>>(
 
       fs.appendFile(
         "./output.ts",
-        printer.printNode(ts.EmitHint.Unspecified, typeDeclaration, undefined),
+        printer.printNode(
+          ts.EmitHint.Unspecified,
+          typeDeclaration,
+          ts.createSourceFile("output.ts", "", ts.ScriptTarget.Latest)
+        ),
         function (err) {
           if (err) console.log("error", err);
         }
@@ -314,7 +344,11 @@ const parse = <T extends Record<string, T>>(
 
     fs.appendFile(
       "./output.ts",
-      printer.printNode(ts.EmitHint.Unspecified, typeDeclaration, undefined),
+      printer.printNode(
+        ts.EmitHint.Unspecified,
+        typeDeclaration,
+        ts.createSourceFile("output.ts", "", ts.ScriptTarget.Latest)
+      ),
       function (err) {
         if (err) console.log("error", err);
       }
@@ -335,7 +369,7 @@ const parse = <T extends Record<string, T>>(
         printer.printNode(
           ts.EmitHint.Unspecified,
           parse(objectKey, value[0]),
-          undefined
+          ts.createSourceFile("output.ts", "", ts.ScriptTarget.Latest)
         );
 
         fs.appendFile("./output.ts", "\n\n", function (err) {
@@ -368,10 +402,19 @@ const parse = <T extends Record<string, T>>(
     if (typeof value === "object") {
       const objectKey = keys[idx].charAt(0).toUpperCase() + keys[idx].slice(1);
 
+      if (value === null) {
+        return ts.factory.createPropertySignature(
+          undefined,
+          keys[idx],
+          undefined,
+          ts.factory.createTypeReferenceNode("null")
+        );
+      }
+
       printer.printNode(
         ts.EmitHint.Unspecified,
         parse(objectKey, value),
-        undefined
+        ts.createSourceFile("output.ts", "", ts.ScriptTarget.Latest)
       );
 
       fs.appendFile("./output.ts", "\n\n", function (err) {
@@ -386,6 +429,15 @@ const parse = <T extends Record<string, T>>(
           ts.factory.createIdentifier(objectKey),
           undefined
         )
+      );
+    }
+
+    if (value === null) {
+      return ts.factory.createPropertySignature(
+        undefined,
+        keys[idx],
+        undefined,
+        ts.factory.createTypeReferenceNode("null")
       );
     }
 
@@ -409,7 +461,11 @@ const parse = <T extends Record<string, T>>(
 
   fs.appendFile(
     "./output.ts",
-    printer.printNode(ts.EmitHint.Unspecified, interfaceDeclaration, undefined),
+    printer.printNode(
+      ts.EmitHint.Unspecified,
+      interfaceDeclaration,
+      ts.createSourceFile("output.ts", "", ts.ScriptTarget.Latest)
+    ),
     function (err) {
       if (err) console.log("error", err);
     }
