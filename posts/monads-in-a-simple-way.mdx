@@ -1,0 +1,98 @@
+---
+title: "Monads in a simple way"
+description: "Monads explained for mortals"
+date: "2023-02-21"
+tags: ['functional-programming']
+---
+
+## Monads in a simple way
+
+Monads were created by mathematicians in 1960 and rediscovered by 
+computer scientists in 1990 as a new way to handle effects. Let's write some 
+examples, imagine a function that gets the tail from a list like this:
+
+```hs
+tail :: [a] -> [a]
+tail (x : xs) = xs
+tail []       = ?
+```
+
+The problem here is obvious, this function can fail if he receives an empty 
+list, now imagine that for any reason we're using this function in our program 
+to work with lists and for some reason, it receives an empty list, in this case, 
+our program will break and the language compiler will give to us an 
+exception, so how to solve this? to solve this we can use the Maybe Monad, 
+let's write this:
+
+```hs
+safeTail :: [a] -> Maybe [a]
+safeTail (x : xs) = Just xs
+safeTail []       = Nothing
+```
+
+Now we have the function **safeTail** which is total, which means that 
+this function will never fail, even if receives an empty list. As you can see Maybe 
+Monad is like a box that encapsulates a value, so this box can have some 
+value or nothing, let's write our own Maybe Monad in Haskell:
+
+```hs
+data Maybe a = Just a | Nothing
+```
+
+As you can see the Maybe Monad allows us to handle functions that can fail, 
+but now that these values are encapsulated how we can work with him? 
+Monads essentially are Functors so we can map functions in our Monads 
+without changing your structure, let's have an example with lists:
+
+```hs
+fmap (+1) [1,2,3]
+[2,3,4]
+```
+
+Here we map the function **(+1)** in our list. As you can see we don’t change its 
+structure, and that’s basically what Functors allow us to do. But, what if we 
+want to pass our boxed value to some function that takes just a value and 
+transforms this into another type of monadic value? We can use the bind 
+operator for this, which is one of the functions necessary for the 
+implementation of a monad. In Haskell, this is represented by the symbol: 
+**>>=**.
+
+```hs
+getFirstEven :: Num a => [a] -> Maybe a
+getFirstEven (x : xs) = if even x then Just x else getFirstEven xs
+getFirstEven []       = Nothing
+```
+
+After writing this we can pass our element to this function using the bind 
+operator, let's write this:
+
+```hs
+safeTail [1,2,3,4] >>= getFirstEven
+Just 2
+
+safeTail [] >>= getFirstEven
+Nothing
+
+safeTail [1,3,5] >>= getFirstEven
+Nothing
+```
+
+One thing that you can notice here is that the **getFirstEven** function also 
+returns a Maybe Monad, so what the bind operator does is get the value 
+from the box and put him back in the box after doing something. This helps 
+us to compose our monadic functions handling all the effects that we can 
+find on the way.
+
+So the central point here is that Monads allow us to handle effects, like for 
+example handle Input/Output with IO Monad. This is very powerful because 
+it allows us to have handled effects with pure functions, meaning that it also 
+allows us to build real-world applications with pure languages like Haskell.
+
+A little explanation about this: Haskell, for example, is a pure language which 
+means that we just have pure functions. Pure functions are like mathematical 
+functions: they will produce exactly the same output given the same input, so 
+it’s not possible to have side effects, for example. While building a real-world 
+application, on another note, we need to handle side effects like getting 
+some data typed by the user, or reading some file. So we may think that 
+Haskell is a useless language, but Monads allow us to handle these effects 
+while maintaining the functions pure.
