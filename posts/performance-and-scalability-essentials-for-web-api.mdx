@@ -317,7 +317,8 @@ A load balancer is a device that acts as a reverse proxy to distribute and coord
 
 <img src="https://github.com/Guilherme775/my-blog/blob/main/public/loadbalancing.png?raw=true" alt="Load Balancing" />
 
-So if you want, you can code your own load balancer, but I'll use NGINX in this post. NGINX is an efficient web server that can also be used as a load balancer.
+So if you want, you can code your own load balancer, but I'll use NGINX in this post. NGINX is an efficient web server that can also be used as a 
+load balancer. You can install NGINX [here](https://www.nginx.com/resources/wiki/start/topics/tutorials/install/).
 
 So let's leave our API implementation using NodeJs clustering for now and go back to the single-threaded one:
 
@@ -360,6 +361,8 @@ app.listen(3000, async () => {
 But now, instead of running just one server, we'll run multiple ones. To help with that, I'll use Docker here:
 
 ```Dockerfile
+// Dockerfile
+
 FROM node:16
 
 WORKDIR /usr/src/app
@@ -374,7 +377,13 @@ EXPOSE 3000
 CMD ["npm", "run", "dev"]
 ```
 
-Using Docker, we can efficiently run multiple servers in multiple ports, so I spawned ten servers on ten ports of my PC.
+Using Docker, we can efficiently run multiple servers in multiple ports, so I spawned ten servers on ten ports of my PC using the commands:
+
+```shell
+sudo docker build . -t api
+
+sudo docker run --name {NAME_HERE} -p {PORT_NUMBER}:3000 -d api
+```
 
 But now we've multiple servers running in various ports, and we need to coordinate all of them, let's use NGINX to do that:
 
@@ -554,13 +563,13 @@ Almost all APIs that handle assets like images, videos, or webpages will use CDN
 
 Here are some other practical and cool concepts that I'll not enter into detail in this blog post:
 
-- #### Data compression
+- #### [Data compression](https://en.wikipedia.org/wiki/Data_compression)
 
-- #### Asynchronous processing
+- #### [Asynchronous processing](https://en.wikipedia.org/wiki/Asynchrony_(computer_programming))
 
-- #### Server capacity planning
+- #### [Server capacity planning](https://en.wikipedia.org/wiki/Capacity_planning#Capacity)
 
-- #### Network latency
+- #### [Network latency](https://en.wikipedia.org/wiki/Latency_(engineering))
 
 ## Conclusion
 
