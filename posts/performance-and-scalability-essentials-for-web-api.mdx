@@ -44,8 +44,9 @@ So here we have a simple endpoint called '/fib' that receives a number from quer
 I'm using Fibonacci because depending on the number, the node runtime may take a while to calculate the result, so this is enough 
 to simulate something with some CPU cost.
 
-So if I use some library like artillery to do load testing on this API endpoint making **100 concurrent requests per second for 10 seconds, 
-passing the number 30 in the param** running locally on my PC, the results will be something like this:
+So if I use some library like [Artillery](https://www.artillery.io/docs/guides/guides/http-reference) to do load testing on this API 
+endpoint making **100 concurrent requests per second for 10 seconds, passing the number 30 in the param** running locally on my PC, 
+the results will be something like this:
 
 ```json
 {
