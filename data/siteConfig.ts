@@ -11,7 +11,7 @@ const siteConfig: SiteConfig = {
     { label: "About", href: "/about" },
   ],
   social: {
-    github: "https://github.com/Guilherme775",
+    github: "https://github.com/KindaSloth",
     twitter: "https://twitter.com/KindSloth",
   },
 };

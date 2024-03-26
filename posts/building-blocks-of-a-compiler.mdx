@@ -37,7 +37,7 @@ However, not all sequences of characters in the source code help understand the 
 typically discards sequences like whitespace and comments or categorizes them as a unique token.
 
 Here you can see the basic lexer implementation I did for the toy language I wrote for this post: 
-[Lexer](https://github.com/Guilherme775/Cria/blob/main/src/lexer.ts).
+[Lexer](https://github.com/KindaSloth/Cria/blob/main/src/lexer.ts).
 
 Just a note: This lexer could be way more efficient and faster; I did it to make it work as simply as possible.
 
@@ -57,9 +57,9 @@ By the end of the parsing phase, if no errors are detected, the compiler has a s
 
 Below you can see the basic parser implementation that I did.
 
-First, we define our [AST](https://github.com/Guilherme775/Cria/blob/main/src/ast.ts).
+First, we define our [AST](https://github.com/KindaSloth/Cria/blob/main/src/ast.ts).
 
-And with that, we can write our parser: [Parser](https://github.com/Guilherme775/Cria/blob/main/src/parser.ts).
+And with that, we can write our parser: [Parser](https://github.com/KindaSloth/Cria/blob/main/src/parser.ts).
 
 Just a note: I'm using an array of expressions for this toy language, but that's not recommended; I'm just simplifying stuff here.
 
@@ -82,7 +82,7 @@ Here are some of the tasks that can be part of semantic analysis:
 Errors caught in this stage can include type mismatch, undefined variables, improper use of operations, and unreachable code. If any 
 semantic errors are found, the compiler reports them to the user.
 
-Here you can see the basic type checker implementation that I did: [Type checker](https://github.com/Guilherme775/Cria/blob/main/src/checker.ts).
+Here you can see the basic type checker implementation that I did: [Type checker](https://github.com/KindaSloth/Cria/blob/main/src/checker.ts).
 
 Just a note: Like the lexer, this could be way more efficient and faster; I did it to make it work as simply as possible.
 
@@ -130,11 +130,11 @@ and heaps for dynamic memory allocation, managing the invocation and return of f
 implementing some form of garbage collection for languages that support it.
 
 Here you can see the basic printer implementation that I did to emit javascript from my "AST": 
-[Printer](https://github.com/Guilherme775/Cria/blob/main/src/printer.ts).
+[Printer](https://github.com/KindaSloth/Cria/blob/main/src/printer.ts).
 
 ## Conclusion
 
 The design and implementation of compilers (or transpilers) is a complex and fascinating subject, exploring the intersection of theory and practice, language design, 
 and software engineering. It offers a unique insight into the workings of programming languages and the translation between them.
 
-Here you can see the complete source code of the toy language described in this post: [source code](https://github.com/Guilherme775/Cria)
+Here you can see the complete source code of the toy language described in this post: [source code](https://github.com/KindaSloth/Cria)
